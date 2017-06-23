@@ -1,35 +1,31 @@
 package com.mucahitbayar.shoppingcart
 
-import com.mucahitbayar.shoppingcart.data.ProductRepository
-import com.mucahitbayar.shoppingcart.domain.Product
+import com.mucahitbayar.shoppingcart.checkout.{ShoppingCart, ShoppingCartItem}
+import com.mucahitbayar.shoppingcart.data.{DiscountRepository, ProductRepository, Repository}
+import com.mucahitbayar.shoppingcart.domain.{Discount, Product}
 
 object CheckOut {
   def main(args: Array[String]): Unit = {
-    val items: List[Product] = getProducts(args)
-    val totalPrice: BigDecimal = calculateTotalPrice(items)
-    val formattedPrice: String = formatPrice(totalPrice)
-    val totalString: String = getTotalToDisplay(items, formattedPrice)
-    println(totalString)
-  }
-
-  def getProducts(args: Array[String]): List[Product] = {
     val productRepository = new ProductRepository()
-    val items = args.flatMap(s => productRepository.get(s)).toList
-    items
+    val discounts: List[Discount] = getDiscounts
+    val shoppingCart = addToShoppingCart(productRepository, discounts, args)
+    shoppingCart.printTotal
   }
 
-  def calculateTotalPrice(items: List[Product]) = {
-    val totalPrice = items.map(p => p.price).sum
-    totalPrice
+  def getDiscounts = {
+    val discountRepository = new DiscountRepository()
+    val discounts: List[Discount] = discountRepository.getAll()
+    discounts
   }
 
-  def formatPrice(totalPrice: BigDecimal) = {
-    if (totalPrice > 1) s"£${totalPrice}" else s"${totalPrice * 100}p"
+  def addToShoppingCart(productRepository: Repository[Product], discounts: List[Discount], items: Array[String]): ShoppingCart = {
+    val products = mapToProducts(productRepository, items)
+    val shoppingCartItems = products.map(p => (p, 1)).groupBy(_._1).map(m => ShoppingCartItem(m._1, m._2.size)).toList
+    ShoppingCart(shoppingCartItems, discounts)
   }
 
-  def getTotalToDisplay(items: List[Product], formattedPrice: String) = {
-    val totalString = s"[ ${items.map(p => p.name).mkString(", ")} ] => ${formattedPrice}"
-    totalString
+  def mapToProducts(repository: Repository[Product], args: Array[String]): List[Product] = {
+    args.map(arg => repository.get(arg)).flatMap(p => p).toList
   }
 
 }
